@@ -48,4 +48,56 @@ let jsonUsingCata pp =
 
     cataAstroPath emptyJson itemJson pathPartJson pp
 
+let rec foldAstroPath fEmpty fItem fPathPart acc = function
+| Empty -> 
+    fEmpty acc
+| Item (pp,value) -> 
+    fItem acc pp value
+| PathPart (pp,ap) -> 
+    let newAcc = fPathPart acc pp
+    foldAstroPath fEmpty fItem fPathPart newAcc ap
+
+(* https://fsharpforfunandprofit.com/posts/recursive-types-and-folds-2/#rules-for-creating-a-fold *)
+
+let jsonUsingFold ap =
+    let emptyJson _ = "{}"
+    let itemJson acc pp v = acc + (sprintf "{ '%s': '%A' }" pp v)
+    let pathPartJson acc pp = sprintf "{ '%s': %s }" pp acc
+
+    foldAstroPath emptyJson itemJson pathPartJson "" ap
+
+let jsonUsingFold2 ap =
+    let emptyJson generator = generator "{}"
+    let itemJson generator pp v = generator (sprintf "{ '%s': '%A' }" pp v)
+    let pathPartJson generator pp = 
+        let newGenerator innerText =
+            let newInnerText = sprintf "{ '%s': %s }" pp innerText 
+            generator newInnerText 
+        newGenerator 
+
+    foldAstroPath emptyJson itemJson pathPartJson (fun s -> "("+s+")") ap
+
+let rec foldBackAstroPath fEmpty fItem fPathPart ap generator =
+    match ap with
+    | Empty -> 
+        generator (fEmpty ())
+    | Item (pp,value) -> 
+        generator (fItem pp value)
+    | PathPart (pp,ap) -> 
+        let newGenerator innerVal =
+            let newInnerVal = fPathPart pp innerVal 
+            generator newInnerVal
+        foldBackAstroPath fEmpty fItem fPathPart ap newGenerator
+
+let jsonUsingFoldBack pp =
+    let emptyJson() = "{}"
+    let itemJson pp v = sprintf "{ '%s': '%A' }" pp v
+    let pathPartJson pp innerJson = sprintf "{ '%s': %s }" pp innerJson
+
+    foldBackAstroPath emptyJson itemJson pathPartJson pp id
+
+(* https://fsharpforfunandprofit.com/posts/recursive-types-and-folds-2b/#iteration-vs-recursion *)
+
+
+
 
